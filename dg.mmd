@@ -1,0 +1,319 @@
+classDiagram
+    %% ============================================
+    %% MONGOOSE SCHEMA MODELS - Express.js Backend
+    %% ============================================
+
+    %% User Schema
+    class User {
+        <<Schema>>
+        +ObjectId _id
+        +String username
+        +String password
+        +String email
+        +String phone
+        +String fullName
+        +String avatar
+        +String role (admin|trader|producer|moderator|guest)
+        +Boolean isActive
+        +Boolean isApproved
+        +Date createdAt
+        +Date updatedAt
+        +comparePassword()$ (method)
+        +generateToken()$ (method)
+        +findByRole()$ (static)
+    }
+
+    %% Digital Asset Base Schema (Discriminator Pattern)
+    class DigitalAsset {
+        <<Schema>>
+        +ObjectId _id
+        +String name
+        +String description
+        +String assetType (household|collection_point|craft_village|tourism_point)
+        +Location location (subdocument)
+        +String[] images
+        +ObjectId ownerId (ref: User)
+        +String contactInfo
+        +Boolean isActive
+        +Boolean isApproved
+        +Date createdAt
+        +Date updatedAt
+        +findByLocation()$ (static)
+        +findNearby()$ (static)
+        +toGeoJSON()$ (method)
+    }
+
+    %% Location Subdocument (Embedded in DigitalAsset)
+    class Location {
+        <<Subdocument>>
+        +type: Point
+        +Number[] coordinates [longitude, latitude]
+        +String address
+        +String ward
+        +String district
+        +String province
+    }
+
+    %% Household Schema (extends DigitalAsset)
+    class Household {
+        <<Schema>>
+        +String householdCode
+        +String ownerName
+        +String specialty
+        +Number totalProducts
+        +getProducts()$ (virtual)
+    }
+
+    %% CollectionPoint Schema (extends DigitalAsset)
+    class CollectionPoint {
+        <<Schema>>
+        +String pointName
+        +String operatingHours
+        +String[] acceptedProducts
+        +Number capacity
+        +Number currentLoad
+    }
+
+    %% CraftVillage Schema (extends DigitalAsset)
+    class CraftVillage {
+        <<Schema>>
+        +String villageName
+        +String craftType
+        +String history
+        +String[] specialties
+        +getTours()$ (virtual)
+    }
+
+    %% TourismPoint Schema (extends DigitalAsset)
+    class TourismPoint {
+        <<Schema>>
+        +String pointName
+        +String tourismType
+        +String[] facilities
+        +Number rating
+        +Number reviewCount
+        +calculateAverageRating()$ (method)
+    }
+
+    %% Product Schema
+    class Product {
+        <<Schema>>
+        +ObjectId _id
+        +String name
+        +String description
+        +ObjectId categoryId (ref: ProductCategory)
+        +Number price
+        +String unit
+        +String[] images
+        +String season
+        +ObjectId householdId (ref: DigitalAsset)
+        +String ocopLevel
+        +Boolean isAvailable
+        +Number viewCount
+        +Date createdAt
+        +Date updatedAt
+        +findByCategory()$ (static)
+        +findByHousehold()$ (static)
+        +incrementView()$ (method)
+    }
+
+    %% ProductCategory Schema
+    class ProductCategory {
+        <<Schema>>
+        +ObjectId _id
+        +String name
+        +String type (agricultural|handicraft|specialty|ocop)
+        +String description
+        +String icon
+        +Number productCount
+        +Date createdAt
+        +Date updatedAt
+    }
+
+    %% Network Schema (Connection between Trader and Producer)
+    class Network {
+        <<Schema>>
+        +ObjectId _id
+        +ObjectId traderId (ref: User)
+        +ObjectId producerId (ref: User)
+        +String connectionType (buyer|supplier|partner)
+        +String status (pending|active|inactive)
+        +Object metadata
+        +Date connectedAt
+        +Date updatedAt
+        +findByTrader()$ (static)
+        +findByProducer()$ (static)
+    }
+
+    %% Message Schema
+    class Message {
+        <<Schema>>
+        +ObjectId _id
+        +ObjectId senderId (ref: User)
+        +ObjectId receiverId (ref: User)
+        +String content
+        +String[] attachments
+        +String messageType (text|image|file)
+        +Boolean isRead
+        +Date sentAt
+        +Date readAt
+        +markAsRead()$ (method)
+        +findConversation()$ (static)
+    }
+
+    %% Notification Schema
+    class Notification {
+        <<Schema>>
+        +ObjectId _id
+        +ObjectId userId (ref: User)
+        +String type (order|message|approval|system)
+        +String title
+        +String content
+        +Object data
+        +Boolean isRead
+        +Date createdAt
+        +sendToUser()$ (static)
+        +markAllAsRead()$ (static)
+    }
+
+    %% Post Schema (User-generated content)
+    class Post {
+        <<Schema>>
+        +ObjectId _id
+        +ObjectId authorId (ref: User)
+        +String title
+        +String content
+        +String[] images
+        +String[] videos
+        +String status (draft|pending|approved|rejected)
+        +String rejectionReason
+        +ObjectId[] taggedProducts (ref: Product)
+        +Date createdAt
+        +Date updatedAt
+        +Date approvedAt
+        +approve()$ (method)
+        +reject()$ (method)
+        +findPending()$ (static)
+    }
+
+    %% Review Schema
+    class Review {
+        <<Schema>>
+        +ObjectId _id
+        +ObjectId productId (ref: Product)
+        +ObjectId userId (ref: User)
+        +Number rating (1-5)
+        +String comment
+        +String[] images
+        +Boolean isVerifiedPurchase
+        +Date createdAt
+        +Date updatedAt
+        +findByProduct()$ (static)
+        +calculateProductRating()$ (static)
+    }
+
+    %% Tour Schema
+    class Tour {
+        <<Schema>>
+        +ObjectId _id
+        +String name
+        +String description
+        +Number price
+        +Number duration
+        +ObjectId[] includedPoints (ref: DigitalAsset)
+        +String[] highlights
+        +String contactForm
+        +Number maxParticipants
+        +Boolean isActive
+        +Date createdAt
+        +Date updatedAt
+    }
+
+    %% SystemConfig Schema (Singleton pattern)
+    class SystemConfig {
+        <<Schema>>
+        +ObjectId _id
+        +String communeName
+        +String bannerUrl
+        +String logoUrl
+        +Object contactInfo
+        +Object socialMedia
+        +Object settings
+        +Date updatedAt
+        +getInstance()$ (static)
+    }
+
+    %% Report Schema (Analytics)
+    class Report {
+        <<Schema>>
+        +ObjectId _id
+        +String reportType (daily|weekly|monthly|custom)
+        +Date startDate
+        +Date endDate
+        +Object metrics
+        +Object data
+        +ObjectId generatedBy (ref: User)
+        +Date generatedAt
+        +generate()$ (static)
+    }
+
+    %% SupportRequest Schema
+    class SupportRequest {
+        <<Schema>>
+        +ObjectId _id
+        +ObjectId userId (ref: User)
+        +String requestType (technical|content|other)
+        +String description
+        +String[] attachments
+        +String status (pending|in_progress|resolved|closed)
+        +ObjectId assignedTo (ref: User)
+        +String resolution
+        +Date createdAt
+        +Date resolvedAt
+    }
+
+    %% ============================================
+    %% RELATIONSHIPS (MongoDB References)
+    %% ============================================
+
+    %% User relationships
+    User "1" --> "*" DigitalAsset : owns
+    User "1" --> "*" Product : manages
+    User "1" --> "*" Post : creates
+    User "1" --> "*" Message : sends
+    User "1" --> "*" Message : receives
+    User "1" --> "*" Notification : receives
+    User "1" --> "*" Review : writes
+    User "1" --> "*" SupportRequest : submits
+
+    %% DigitalAsset inheritance (Discriminator)
+    DigitalAsset <|-- Household
+    DigitalAsset <|-- CollectionPoint
+    DigitalAsset <|-- CraftVillage
+    DigitalAsset <|-- TourismPoint
+    DigitalAsset *-- Location : embeds
+
+    %% Product relationships
+    Product "*" --> "1" ProductCategory : belongs to
+    Product "*" --> "1" Household : produced by
+    Product "1" --> "*" Review : has
+    Product "*" <-- "*" Post : tagged in
+
+    %% Network relationships
+    Network "*" --> "1" User : trader
+    Network "*" --> "1" User : producer
+
+    %% Tour relationships
+    Tour "*" --> "*" DigitalAsset : includes
+
+    %% System relationships
+    Report "*" --> "1" User : generated by
+    SupportRequest "*" --> "1" User : assigned to
+
+    %% ============================================
+    %% NOTES
+    %% ============================================
+    note for User "Sử dụng bcrypt hash password\nJWT authentication\nRole-based access control"
+    note for DigitalAsset "Discriminator pattern cho đa hình\nGeoJSON index cho tìm kiếm theo vị trí\nRef populate cho owner"
+    note for Product "Index: categoryId, householdId\nVirtual populate cho reviews"
+    note for Message "Index compound: senderId + receiverId\nSupport real-time với Socket.io"
